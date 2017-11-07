@@ -1,11 +1,19 @@
 package lof.youyou;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutCompat;
 import android.util.Log;
 import android.view.Window;
@@ -23,6 +31,10 @@ public class FullscreenActivity extends Activity {
     private ValueCallback<Uri> mUploadMessage;
     boolean doubleBackToExitPressedOnce = false;
 
+    private static final int REQUEST_FINE_LOCATION = 1;
+    private String mGeolocationOrigin;
+    private GeolocationPermissions.Callback mGeolocationCallback;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,7 +49,21 @@ public class FullscreenActivity extends Activity {
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
+                String perm = Manifest.permission.ACCESS_FINE_LOCATION;
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                        ContextCompat.checkSelfPermission(FullscreenActivity.this, perm) == PackageManager.PERMISSION_GRANTED) {
+                    // we're on SDK < 23 OR user has already granted permission
+                    callback.invoke(origin, true, false);
+                } else {
+                    if (!ActivityCompat.shouldShowRequestPermissionRationale(FullscreenActivity.this, perm)) {
+                        // ask the user for permission
+                        ActivityCompat.requestPermissions(FullscreenActivity.this, new String[] {perm}, REQUEST_FINE_LOCATION);
+
+                        // we will use these when user responds
+                        mGeolocationOrigin = origin;
+                        mGeolocationCallback = callback;
+                    }
+                }
             }
 
             public boolean onShowFileChooser(WebView webView,
@@ -82,6 +108,25 @@ public class FullscreenActivity extends Activity {
         Intent chooserIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         startActivityForResult(chooserIntent, RESULT_CODE);
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case REQUEST_FINE_LOCATION:
+                boolean allow = false;
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // user has allowed this permission
+                    allow = true;
+                }
+                if (mGeolocationCallback != null) {
+                    // call back to web chrome client
+                    mGeolocationCallback.invoke(mGeolocationOrigin, allow, false);
+                }
+                break;
+        }
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
