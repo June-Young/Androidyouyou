@@ -16,6 +16,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutCompat;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Window;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -34,13 +35,14 @@ public class FullscreenActivity extends Activity {
     private static final int REQUEST_FINE_LOCATION = 1;
     private String mGeolocationOrigin;
     private GeolocationPermissions.Callback mGeolocationCallback;
+    WebView webView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_fullscreen);
-        WebView webView = (WebView) findViewById(R.id.webView);
+        webView = (WebView) findViewById(R.id.webView);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(true);
         webView.getSettings().setGeolocationEnabled(true);
@@ -57,7 +59,7 @@ public class FullscreenActivity extends Activity {
                 } else {
                     if (!ActivityCompat.shouldShowRequestPermissionRationale(FullscreenActivity.this, perm)) {
                         // ask the user for permission
-                        ActivityCompat.requestPermissions(FullscreenActivity.this, new String[] {perm}, REQUEST_FINE_LOCATION);
+                        ActivityCompat.requestPermissions(FullscreenActivity.this, new String[]{perm}, REQUEST_FINE_LOCATION);
 
                         // we will use these when user responds
                         mGeolocationOrigin = origin;
@@ -153,6 +155,9 @@ public class FullscreenActivity extends Activity {
         }
         this.doubleBackToExitPressedOnce = true;
         Toast.makeText(this, "Please click again to exit", Toast.LENGTH_SHORT).show();
+        if (webView.canGoBack()) {
+            webView.goBack();
+        }
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
